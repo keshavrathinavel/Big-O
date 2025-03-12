@@ -1,0 +1,9 @@
+server_ips:
+  - http://localhost:5555
+  - http://localhost:5556
+  - http://localhost:5555
+  - http://localhost:5555
+  - http://localhost:5556
+  - http://localhost:5555
+  - http://localhost:5556
+
