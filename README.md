@@ -35,7 +35,7 @@ brew install go
 Clone the repository and navigate to the project folder:
 
 ```bash
-git clone git@github.com-rohanjnr:keshavrathinavel/Big-O.git
+git clone https://github.com/keshavrathinavel/Big-O.git
 cd Big-O
 ```
 
