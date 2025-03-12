@@ -1,19 +1,12 @@
 
-# 🏎️ Load Test and Database Generation Automation
-
-This project uses a `Justfile` to automate the following tasks:  
-✅ Building binaries
-✅ Generating dataset
-✅ Running load tests with configurable parameters
-✅ Managing Docker containers
-
----
+# 🏎️ BigO Tools: Dataset gen + Load Testing
+This repository contains tools in order to generate dataset (with all unique keys) and perform a load test on the BigO solution cluster.
 
 ## ⚠️ **Requirements**
-- `just` installed  
-- **Go 1.24.1 or higher** installed  
-- Docker installed and running  
-
+- `just` installed
+- **Go 1.24.1 or higher** installed
+- Docker installed and running
+- Your BigO solution
 ---
 
 ## 🚀 **Setup**
