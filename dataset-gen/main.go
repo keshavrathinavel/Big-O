@@ -20,6 +20,23 @@ func pre() error {
 	err := os.MkdirAll(path, os.ModePerm)
 	return err
 }
+func getCombinationsFile(numKeyValuePairs int) *os.File {
+	file, err := os.Open(keysFileName)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			utils.Generate(numKeyValuePairs)
+			file, err = os.Open(keysFileName)
+			if err != nil {
+				log.Fatal(err)
+			}
+			return file
+
+		} else {
+			log.Fatalf("Error while opening file: %v", err)
+		}
+	}
+	return file
+}
 
 func main() {
 
@@ -29,8 +46,7 @@ func main() {
 	}
 
 	rootCmd := &cobra.Command{
-		Use:   "datagen",
-		Short: "Generate dataset for BigO 2025",
+		Use: "datagen",
 	}
 
 	var numKeyValuePairs int
@@ -39,22 +55,13 @@ func main() {
 
 	rootCmd.PersistentFlags().IntVarP(&numKeyValuePairs, "num", "", 5000, "Number of key value pairs")
 	rootCmd.PersistentFlags().IntVarP(&numGoroutines, "parallel", "", 1, "Number of goroutines")
-	rootCmd.PersistentFlags().IntVarP(&chunkSize, "chunk_size", "", 32*100, "Chunk size to load data")
+	rootCmd.PersistentFlags().IntVarP(&chunkSize, "chunk_size", "", 64*1000, "Chunk size to load data")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatalf("CLI error: %v", err)
 		return
 	}
-
-	file, err := os.Open(keysFileName)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			utils.Generate(numKeyValuePairs)
-		} else {
-			log.Fatalf("Error while opening file: %v", err)
-		}
-	}
-
+	file := getCombinationsFile(numKeyValuePairs)
 	keysChannel := internal.ReadChunksFromFile(file, chunkSize, numKeyValuePairs)
 
 	var wg sync.WaitGroup

@@ -103,7 +103,7 @@
         {
           "editorMode": "code",
           "expr": "histogram_quantile(0.5, rate(http_client_request_duration_seconds_bucket[1m]))",
-          "legendFormat": "__auto",
+          "legendFormat": "P50",
           "range": true,
           "refId": "P50"
         },
@@ -116,7 +116,7 @@
           "expr": "histogram_quantile(0.9, rate(http_client_request_duration_seconds_bucket[1m]))",
           "hide": false,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "P90",
           "range": true,
           "refId": "P90"
         }
@@ -423,13 +423,13 @@
     "list": []
   },
   "time": {
-    "from": "now-15m",
-    "to": "now"
+    "from": "2025-03-12T10:22:34.819Z",
+    "to": "2025-03-12T10:22:55.186Z"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "BigO Monitoring",
   "uid": "befi36fr71atca",
-  "version": 4,
+  "version": 2,
   "weekStart": ""
 }

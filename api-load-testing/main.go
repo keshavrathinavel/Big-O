@@ -21,7 +21,14 @@ func shuffleServerIps(ips [7]string) [7]string {
 	return ips
 }
 
-func loadTest(numRequestsPerVU int, numVUs int, serverIps [7]string) {
+func loadTest(numRequestsPerVU int, numVUs int) {
+	fileData, err := os.ReadFile("config.yaml")
+
+	if err != nil {
+		log.Fatalf("Error while reading config file: %v", err)
+	}
+	serverIps := internal.ReadConfig(fileData)
+	checkServerHealth(serverIps)
 	var wg sync.WaitGroup
 
 	ch := internal.ReadKeyValuePairs("output", 64*1000)
@@ -75,26 +82,29 @@ func checkServerHealth(serverIPs [7]string) {
 }
 
 func main() {
-	fileData, err := os.ReadFile("config.yaml")
-
-	if err != nil {
-		log.Fatalf("Error while reading config file: %v", err)
-	}
-	serverIps := internal.ReadConfig(fileData)
-	checkServerHealth(serverIps)
 
 	rootCmd := &cobra.Command{
-		Use: "sim",
+		Use: "load_test",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return nil
+		},
 	}
 
 	var numVUs int
 	var numRequestsPerVU int
 
-	rootCmd.PersistentFlags().IntVarP(&numVUs, "vus", "", 1, "Number of virtual users to simulate")
-	rootCmd.PersistentFlags().IntVarP(&numRequestsPerVU, "reqs", "", 10, "Number of requests per virtual user")
+	rootCmd.PersistentFlags().IntVarP(&numVUs, "vus", "", 0, "Number of virtual users to simulate")
+	rootCmd.PersistentFlags().IntVarP(&numRequestsPerVU, "reqs", "", 0, "Number of requests per virtual user")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Println("CLI error:", err)
+		os.Exit(1)
 	}
-	loadTest(numRequestsPerVU, numVUs, serverIps)
+
+	if numVUs == 0 || numRequestsPerVU == 0 {
+		fmt.Println("Flags missing")
+		rootCmd.Help()
+		os.Exit(1)
+	}
+	loadTest(numRequestsPerVU, numVUs)
 }

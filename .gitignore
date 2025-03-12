@@ -26,3 +26,9 @@ go.work.sum
 
 dataset-gen/output/
 dataset-gen/combinations.txt
+
+output/
+combinations.txt
+load_test
+gen
+.DS_Store
