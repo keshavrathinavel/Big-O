@@ -1,16 +1,18 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"os"
 	"path/filepath"
 	"sync"
 
 	"github.com/rohanjnr/bigo/dataset-gen/internal"
+	"github.com/rohanjnr/bigo/dataset-gen/utils"
 	"github.com/spf13/cobra"
 )
 
-const keysFileName = "exp/combinations.txt"
+const keysFileName = "combinations.txt"
 const outputDirName = "output"
 
 func pre() error {
@@ -46,8 +48,11 @@ func main() {
 
 	file, err := os.Open(keysFileName)
 	if err != nil {
-		log.Fatalf("Error while opening file: %v", err)
-		return
+		if errors.Is(err, os.ErrNotExist) {
+			utils.Generate(numKeyValuePairs)
+		} else {
+			log.Fatalf("Error while opening file: %v", err)
+		}
 	}
 
 	keysChannel := internal.ReadChunksFromFile(file, chunkSize, numKeyValuePairs)

@@ -1,39 +1,63 @@
-package main
+package utils
 
 import (
-	"fmt"
+	"log"
 	"os"
 )
 
-func main() {
-	// Define the characters to be used (0-9 and A-Z)
+var numKeys int
+var buffer []byte
+var stopGeneration bool
+
+func Generate(totalKeys int) {
 	characters := "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-	// Open a file for writing
 	file, err := os.Create("combinations.txt")
 	if err != nil {
-		fmt.Println("Error creating file:", err)
-		return
+		log.Fatalf("Error creating file: %v", err)
 	}
 	defer file.Close()
 
-	// Generate all combinations of length 6
-	generateCombinations(characters, 6, "", file)
+	stopGeneration = false
+	numKeys = 0
+
+	generateCombinations(characters, 6, []byte{}, file, totalKeys)
+
+	// Write remaining buffer (if any)
+	if len(buffer) > 0 {
+		file.Write(buffer)
+	}
 }
 
-// Recursive function to generate combinations
-func generateCombinations(characters string, length int, current string, file *os.File) {
-	// If the current combination is of the desired length, write it to the file
+func generateCombinations(characters string, length int, current []byte, file *os.File, n int) {
+	if stopGeneration {
+		return
+	}
+
 	if len(current) == length {
-		_, err := file.WriteString(current + "\n")
-		if err != nil {
-			fmt.Println("Error writing to file:", err)
+		buffer = append(buffer, current...)
+		buffer = append(buffer, '\n')
+		numKeys++
+
+		if numKeys >= n {
+			stopGeneration = true
+			return
+		}
+
+		// Write if buffer exceeds 64KB
+		if len(buffer) > 64000 {
+			_, err := file.Write(buffer)
+			if err != nil {
+				log.Fatalf("Error writing to file: %v", err)
+			}
+			buffer = buffer[:0] // Reset buffer without reallocation
 		}
 		return
 	}
 
-	// Recursively build the combination
-	for _, char := range characters {
-		generateCombinations(characters, length, current+string(char), file)
+	for i := 0; i < len(characters) && !stopGeneration; i++ {
+		current = append(current, characters[i])
+		generateCombinations(characters, length, current, file, n)
+		current = current[:len(current)-1] // Backtrack
 	}
 }
