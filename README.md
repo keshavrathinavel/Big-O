@@ -64,7 +64,7 @@ Generate the dataset by building the `gen` binary and executing it:
 ```bash
 just generate-dataset
 ```
-- This will generate a database with:
+- This will generate a dataset with:
   - **Number of entries** = `7150000 * 8`
   - **Parallelism** = `4`
 
