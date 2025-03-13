@@ -423,8 +423,8 @@
     "list": []
   },
   "time": {
-    "from": "2025-03-12T10:22:34.819Z",
-    "to": "2025-03-12T10:22:55.186Z"
+    "from": "now-5m",
+    "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
