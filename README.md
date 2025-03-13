@@ -85,6 +85,8 @@ just load-test --reqs 1000000 --vus 2
 - `reqs` → Number of requests per virtual user
 - `vus` → Number of virtual users
 
+This is the bit you will need to configure and playaround in order to achieve max possible throughput by varying the number of virtual users.Although this is only local metrics, on submitting this, you will be given to a test script to run the same on AWS environment indentical to the final test setup.
+
 **3.3 Capturing Metrics**
 
 Metrics will be available on the grafana dashboard.
@@ -96,6 +98,9 @@ Metrics will be available on the grafana dashboard.
 This can be iterative processes to find the optimal number of virtual users (VU) for your solution.
 
 The screenshot and the VU count needs to be updated in the registrations sheet, can be found in slack.
+
+Example Screenshot:
+![alt text](image.png)
 
 ---
 
