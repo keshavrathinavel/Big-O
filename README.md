@@ -48,6 +48,7 @@ You can manually build the binaries before running other commands:
 
 - **Build the `gen` binary**  
 ```bash
+
 just build-gen
 ```
 
