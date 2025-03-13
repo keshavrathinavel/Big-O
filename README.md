@@ -60,9 +60,9 @@ just build-load-test
 ---
 
 ### **2. Generate Dataset**
-Generate the database by building the `gen` binary and executing it:
+Generate the dataset by building the `gen` binary and executing it:
 ```bash
-just generate-database
+just generate-dataset
 ```
 - This will generate a database with:
   - **Number of entries** = `7150000 * 8`
