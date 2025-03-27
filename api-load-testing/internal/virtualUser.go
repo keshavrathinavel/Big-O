@@ -37,6 +37,7 @@ type VirtualUser struct {
 func makeRequest(url string, locationId string, data []byte) {
 	serverUrlFormatted := fmt.Sprintf("%s/%s", url, locationId)
 	req, err := http.NewRequest(http.MethodPut, serverUrlFormatted, bytes.NewBuffer(data))
+	req.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		log.Printf("Error while creating request: %v", err)
 	}
