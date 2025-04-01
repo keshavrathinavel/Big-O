@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -34,6 +35,16 @@ type VirtualUser struct {
 	Wg           *sync.WaitGroup
 }
 
+var client *http.Client
+
+func initHttpClient() {
+	tr := &http.Transport{
+		MaxIdleConnsPerHost: 1024,
+		TLSHandshakeTimeout: 0 * time.Second,
+	}
+	client = &http.Client{Transport: tr}
+}
+
 func makeRequest(url string, locationId string, data []byte) {
 	serverUrlFormatted := fmt.Sprintf("%s/%s", url, locationId)
 	req, err := http.NewRequest(http.MethodPut, serverUrlFormatted, bytes.NewBuffer(data))
@@ -42,7 +53,9 @@ func makeRequest(url string, locationId string, data []byte) {
 		log.Printf("Error while creating request: %v", err)
 	}
 	startTime := time.Now()
-	res, err := http.DefaultClient.Do(req)
+	res, err := client.Do(req)
+	io.Copy(io.Discard, res.Body)
+	res.Body.Close()
 
 	if err != nil {
 		log.Printf("Error while sending request: %v", err)
@@ -67,6 +80,7 @@ func decodePayloadData(line string) KeyValuePair {
 
 func (vu VirtualUser) LoadTest() {
 	defer vu.Wg.Done()
+	initHttpClient()
 	log.Printf("Virtual user %v starting load test\n", vu.VuId)
 	s := fmt.Sprintf("VU %d Progress", vu.VuId)
 
