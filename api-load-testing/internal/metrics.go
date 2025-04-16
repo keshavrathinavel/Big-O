@@ -1,8 +1,12 @@
 package internal
 
 import (
+	"log"
+	"net/http"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -32,4 +36,11 @@ func RegisterMetrics() {
 	prometheus.MustRegister(requestCounter)
 	prometheus.MustRegister(requestDuration)
 	prometheus.MustRegister(requestErrors)
+}
+
+func StartMetricsServer() {
+	http.Handle("/metrics", promhttp.Handler())
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Println("Error while serving metrics endpoint:", err)
+	}
 }

@@ -17,6 +17,9 @@ func ReadKeyValuePairs(folderPath string, chunkSize int) <-chan []string {
 				log.Fatalf("Error while accessing path inside dir: %v", err)
 			}
 			file, err := os.Open(path)
+			if err != nil {
+				log.Fatalf("Error while opening data file: %v", err)
+			}
 			readChunksFromFile(file, ch, chunkSize)
 
 			return nil
@@ -38,7 +41,7 @@ func readChunksFromFile(file *os.File, ch chan []string, chunkSize int) {
 			break
 		}
 		if err != nil {
-			log.Fatal("Error while reading file")
+			log.Fatalf("Error while reading file: %v", err)
 			break
 		}
 

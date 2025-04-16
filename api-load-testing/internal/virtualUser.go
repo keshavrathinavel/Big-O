@@ -28,12 +28,19 @@ type KeyValuePair struct {
 }
 
 type VirtualUser struct {
-	VuId         int
-	NumRequests  int
-	InputChannel <-chan []string
-	ServerIPs    [7]string
-	Wg           *sync.WaitGroup
+	VuId        int
+	NumRequests int
+	ServerIPs   [7]string
+	Wg          *sync.WaitGroup
 }
+
+type ResponseDetails struct {
+	statusCode int
+	duration   float64
+	url        string
+}
+
+const kvPairBufferSize = 128 * 1000
 
 var client *http.Client
 
@@ -45,7 +52,7 @@ func initHttpClient() {
 	client = &http.Client{Transport: tr}
 }
 
-func makeRequest(url string, locationId string, data []byte) {
+func sendRequest(url string, locationId string, data []byte) (ResponseDetails, error) {
 	serverUrlFormatted := fmt.Sprintf("%s/%s", url, locationId)
 	req, err := http.NewRequest(http.MethodPut, serverUrlFormatted, bytes.NewBuffer(data))
 	req.Header.Set("Content-Type", "application/json")
@@ -59,50 +66,85 @@ func makeRequest(url string, locationId string, data []byte) {
 
 	if err != nil {
 		log.Printf("Error while sending request: %v", err)
-		return
+		return ResponseDetails{}, err
 	}
 
 	duration := time.Since(startTime).Seconds()
-	requestCounter.WithLabelValues(url).Inc()
-	requestDuration.Observe(duration)
+	// requestCounter.WithLabelValues(url).Inc()
+	// requestDuration.Observe(duration)
 
-	if res.StatusCode >= 400 {
-		requestErrors.WithLabelValues(url, strconv.Itoa(res.StatusCode)).Inc()
-		// log.Printf("Bad status code: %v", res.StatusCode)
-	}
+	// if res.StatusCode >= 400 {
+	// 	requestErrors.WithLabelValues(url, strconv.Itoa(res.StatusCode)).Inc()
+	// }
+	return ResponseDetails{
+		statusCode: res.StatusCode,
+		duration:   duration,
+		url:        url,
+	}, nil
 }
 
-func decodePayloadData(line string) KeyValuePair {
+func decodePayload(line string) KeyValuePair {
 	kvPair := KeyValuePair{}
 	json.Unmarshal([]byte(line), &kvPair)
 	return kvPair
 }
 
-func (vu VirtualUser) LoadTest() {
+func (vu VirtualUser) StartLoadTest(inputChannel <-chan []string, acceptedWritesCh chan<- []byte) {
 	defer vu.Wg.Done()
+
 	initHttpClient()
+
 	log.Printf("Virtual user %v starting load test\n", vu.VuId)
-	s := fmt.Sprintf("VU %d Progress", vu.VuId)
 
-	bar := progressbar.Default(int64(vu.NumRequests), s)
+	vu.sendRequests(inputChannel, acceptedWritesCh)
 
+	log.Printf("Virtual user %v load testing done\n", vu.VuId)
+}
+
+func recordRequest(responseDetails ResponseDetails, kvPairLine string, kvPairBuffer *bytes.Buffer, acceptedWritesCh chan<- []byte) {
+	requestCounter.WithLabelValues(responseDetails.url).Inc()
+	requestDuration.Observe(responseDetails.duration)
+
+	if responseDetails.statusCode >= 400 {
+		requestErrors.WithLabelValues(responseDetails.url, strconv.Itoa(responseDetails.statusCode)).Inc()
+	}
+	kvPairBuffer.WriteString(kvPairLine)
+	kvPairBuffer.WriteByte('\n')
+
+	if kvPairBuffer.Len() >= kvPairBufferSize {
+		acceptedWritesCh <- kvPairBuffer.Bytes()
+		kvPairBuffer.Reset()
+	}
+}
+
+func (vu VirtualUser) sendRequests(inputChannel <-chan []string, acceptedWritesCh chan<- []byte) {
 	var numSentRequests int
-	for inputLines := range vu.InputChannel {
+	kvPairBuffer := bytes.NewBuffer(make([]byte, 0, kvPairBufferSize))
+
+	defer func() {
+		if kvPairBuffer.Len() > 0 {
+			acceptedWritesCh <- kvPairBuffer.Bytes()
+		}
+	}()
+
+	bar := progressbar.Default(int64(vu.NumRequests), "Progress")
+	for inputLines := range inputChannel {
 		for _, line := range inputLines {
-			serverIndex := numSentRequests % len(vu.ServerIPs)
-			serverUrl := vu.ServerIPs[serverIndex]
-			kvPair := decodePayloadData(line)
+			kvPair := decodePayload(line)
 			body, err := json.Marshal(kvPair.Data)
 			if err != nil {
 				log.Fatalf("Error while marshalling JSON body: %v", err)
 			}
-			makeRequest(serverUrl, kvPair.LocationId, body)
+			serverUrl := vu.ServerIPs[numSentRequests%len(vu.ServerIPs)]
+			res, err := sendRequest(serverUrl, kvPair.LocationId, body)
+			if err == nil {
+				recordRequest(res, line, kvPairBuffer, acceptedWritesCh)
+			}
 			bar.Add(1)
-		}
-		numSentRequests += len(inputLines)
-		if numSentRequests >= vu.NumRequests {
-			break
+			numSentRequests += 1
+			if numSentRequests >= vu.NumRequests {
+				return
+			}
 		}
 	}
-	log.Printf("Virtual user %v load testing done\n", vu.VuId)
 }
