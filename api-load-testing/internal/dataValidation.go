@@ -92,7 +92,6 @@ func (vw *ValidationWorker) makeGetRequest(url string) (LocationResponseData, er
 	body, err := io.ReadAll(res.Body)
 
 	if res.StatusCode != 200 {
-		fmt.Printf("Got status code: %d\n", res.StatusCode)
 		return LocationResponseData{}, ErrHttpNotFound
 	}
 
@@ -144,11 +143,7 @@ func (vw *ValidationWorker) startValidation(inputCh chan []string) {
 
 			if err != nil {
 				if errors.Is(err, ErrHttpNotFound) {
-					fmt.Printf("Missing data for location ID: %v\n", kvPair.LocationId)
-					fmt.Println(kvPair)
 					missingDataCount++
-				} else {
-					log.Printf("Error while sending GET request: %v", err)
 				}
 				continue
 			}
