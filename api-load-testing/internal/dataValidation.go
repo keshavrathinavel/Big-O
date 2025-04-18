@@ -43,6 +43,16 @@ func ValidateData(serverIps [7]string) {
 		readChunksFromFile(file, writesToCheckCh, 8*1000)
 	}()
 	var wg sync.WaitGroup
+
+	go func() {
+		fmt.Print("\n\nValidation Metrics(Updating every 1 second)\n\n")
+		for {
+			printValidationMetrics()
+			time.Sleep(1 * time.Second)
+			clearLines(5)
+		}
+	}()
+
 	for i := range 4 {
 		wg.Add(1)
 		worker := ValidationWorker{
@@ -54,8 +64,7 @@ func ValidateData(serverIps [7]string) {
 		go worker.startValidation(writesToCheckCh)
 	}
 	wg.Wait()
-	fmt.Println("----------------------------------------------------------------------------------")
-	fmt.Printf("Total Correct Reads: %d\n", totalCorrectReads)
+	fmt.Printf("\nTotal Correct Reads: %d\n", totalCorrectReads)
 	fmt.Printf("Total Incorrect Reads: %d\n", totalIncorrectReads)
 	fmt.Printf("Total Missing Data Reads: %d\n", totalMissingDataReads)
 	fmt.Println("----------------------------------------------------------------------------------")
@@ -102,16 +111,28 @@ func isDataValid(expectedKV KeyValuePair, actualData LocationResponseData) bool 
 	return expectedKV.Data == actualData.LocationData
 }
 
+func printValidationMetrics() {
+	fmt.Println("+----------------+----------------+----------------+----------------+")
+	fmt.Println("|  Total Reads   | Correct Reads  | Incorrect Reads| Data not found |")
+	fmt.Println("+----------------+----------------+----------------+----------------+")
+	fmt.Printf("| %-14d | %-14d | %-14d | %-14d |\n", totalCorrectReads+totalIncorrectReads+totalMissingDataReads, totalCorrectReads, totalIncorrectReads, totalMissingDataReads)
+	fmt.Println("+----------------+----------------+----------------+----------------+")
+}
+
+func clearLines(n int) {
+	for i := 0; i < n; i++ {
+		fmt.Print("\033[1A") // Move cursor up one line
+		fmt.Print("\033[2K") // Clear the entire line
+	}
+}
+
 func (vw *ValidationWorker) startValidation(inputCh chan []string) {
 	defer vw.wg.Done()
 
-	fmt.Printf("Validation worker with id %d started\n", vw.id)
-
-	var count int32
-	var incorrectDataCount int32
-	var missingDataCount int32
-
 	for writes := range inputCh {
+		var count int32
+		var incorrectDataCount int32
+		var missingDataCount int32
 		for _, line := range writes {
 			kvPair, err := decodePayload(line)
 			if err != nil {
@@ -138,13 +159,8 @@ func (vw *ValidationWorker) startValidation(inputCh chan []string) {
 			}
 			count++
 		}
+		atomic.AddInt32(&totalCorrectReads, count)
+		atomic.AddInt32(&totalIncorrectReads, incorrectDataCount)
+		atomic.AddInt32(&totalMissingDataReads, missingDataCount)
 	}
-	if count > 0 {
-		log.Printf(
-			"Validation worker ID %d completed requests: %d Correct, %d Incorrect, %d Not Found", vw.id, count-incorrectDataCount, incorrectDataCount, missingDataCount)
-	}
-
-	atomic.AddInt32(&totalCorrectReads, count)
-	atomic.AddInt32(&totalIncorrectReads, incorrectDataCount)
-	atomic.AddInt32(&totalMissingDataReads, missingDataCount)
 }
