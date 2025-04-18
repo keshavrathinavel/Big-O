@@ -83,10 +83,15 @@ func sendRequest(url string, locationId string, data []byte) (ResponseDetails, e
 	}, nil
 }
 
-func decodePayload(line string) KeyValuePair {
+func decodePayload(line string) (KeyValuePair, error) {
 	kvPair := KeyValuePair{}
-	json.Unmarshal([]byte(line), &kvPair)
-	return kvPair
+	err := json.Unmarshal([]byte(line), &kvPair)
+	if err != nil {
+		fmt.Printf("Error is not nil: %v\n", err)
+		fmt.Println(line)
+		return kvPair, err
+	}
+	return kvPair, nil
 }
 
 func (vu VirtualUser) StartLoadTest(inputChannel <-chan []string, acceptedWritesCh chan<- []byte) {
@@ -112,7 +117,9 @@ func recordRequest(responseDetails ResponseDetails, kvPairLine string, kvPairBuf
 	kvPairBuffer.WriteByte('\n')
 
 	if kvPairBuffer.Len() >= kvPairBufferSize {
-		acceptedWritesCh <- kvPairBuffer.Bytes()
+		copyBuf := make([]byte, kvPairBuffer.Len())
+		copy(copyBuf, kvPairBuffer.Bytes())
+		acceptedWritesCh <- copyBuf
 		kvPairBuffer.Reset()
 	}
 }
@@ -130,7 +137,10 @@ func (vu VirtualUser) sendRequests(inputChannel <-chan []string, acceptedWritesC
 	bar := progressbar.Default(int64(vu.NumRequests), "Progress")
 	for inputLines := range inputChannel {
 		for _, line := range inputLines {
-			kvPair := decodePayload(line)
+			kvPair, err := decodePayload(line)
+			if err != nil {
+				continue
+			}
 			body, err := json.Marshal(kvPair.Data)
 			if err != nil {
 				log.Fatalf("Error while marshalling JSON body: %v", err)

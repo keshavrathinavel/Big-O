@@ -19,7 +19,11 @@ load-test *ARGS: build-load-test
     echo "Starting Docker containers..."
     docker-compose up -d
     echo "Running load test with args {{ARGS}}"
-    ./load_test {{ARGS}}
+    ./load_test write {{ARGS}}
+
+validate: build-load-test
+    echo "Starting data validation, using tracking/accepted_writes.txt"
+    ./load_test validate
 
 # Stop Docker containers
 stop-docker:

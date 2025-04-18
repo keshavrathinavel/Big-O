@@ -2,7 +2,6 @@ package main
 
 import (
 	"api_load_testing/internal"
-	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -43,6 +42,12 @@ func startVUs(numVUs int, numRequestsPerVU int, serverIps [7]string, dataInputCh
 	wg.Wait()
 }
 
+func checkDataIntegrity() {
+	serverIps := internal.ReadConfig()
+	internal.CheckClusterHealth(serverIps)
+	internal.ValidateData(serverIps)
+}
+
 func main() {
 	rootCmd := &cobra.Command{
 		Use: "load_test",
@@ -54,19 +59,37 @@ func main() {
 	var numVUs int
 	var numRequestsPerVU int
 
-	rootCmd.PersistentFlags().IntVarP(&numVUs, "vus", "", 0, "Number of virtual users to simulate")
-	rootCmd.PersistentFlags().IntVarP(&numRequestsPerVU, "reqs", "", 0, "Number of requests per virtual user")
+	var writeCmd = &cobra.Command{
+		Use:   "write",
+		Short: "Start the write process",
+		Long:  "Start write process to cluster by sending PUT requests",
+		Run: func(cmd *cobra.Command, args []string) {
+			if numVUs == 0 || numRequestsPerVU == 0 {
+				log.Println("Flags missing")
+				rootCmd.Help()
+				os.Exit(1)
+			}
+			log.Printf("Calling write commad, num requests per VU: %v, num VUs: %v", numRequestsPerVU, numVUs)
+			loadTest(numRequestsPerVU, numVUs)
+		},
+	}
+
+	writeCmd.PersistentFlags().IntVarP(&numVUs, "vus", "", 0, "Number of virtual users to simulate")
+	writeCmd.PersistentFlags().IntVarP(&numRequestsPerVU, "reqs", "", 0, "Number of requests per virtual user")
+
+	var validateCmd = &cobra.Command{
+		Use:   "validate",
+		Short: "Validate written data from the cluster using GET requests",
+		Run: func(cmd *cobra.Command, args []string) {
+			checkDataIntegrity()
+		},
+	}
+
+	rootCmd.AddCommand(writeCmd)
+	rootCmd.AddCommand(validateCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Println("CLI error:", err)
 		os.Exit(1)
 	}
-
-	if numVUs == 0 || numRequestsPerVU == 0 {
-		fmt.Println("Flags missing")
-		rootCmd.Help()
-		os.Exit(1)
-	}
-	loadTest(numRequestsPerVU, numVUs)
-	
 }
